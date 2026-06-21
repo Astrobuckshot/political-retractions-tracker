@@ -54,10 +54,10 @@ with st.form("add_entry"):
         category = st.selectbox("Category", ["National", "State", "Global/International"])
     with colB:
         correction_link = st.text_input("Link to Correction Article")
-        original_link = st.text_input("Link to Original Article (if different)")
+        original_link = st.text_input("Link to Original Article (if available)")
 
-    original_headline = st.text_input("Original Article Headline (optional)")
-    original_claim = st.text_area("What the Original Article Claimed", height=120)
+    original_headline = st.text_input("Original Article Headline")
+    original_claim = st.text_area("Summary of What the Original Article Claimed", height=120)
     correction = st.text_area("Retraction / Correction Text *", height=180)
 
     if st.form_submit_button("✅ Add Entry"):
@@ -70,7 +70,7 @@ with st.form("add_entry"):
                 "Outlet": outlet,
                 "Category": category,
                 "Original_Headline": original_headline,
-                "Original_Claim": original_claim or "See linked article",
+                "Original_Claim": original_claim or "",
                 "Original_Link": original_link,
                 "Correction": correction,
                 "Link": correction_link,
@@ -110,12 +110,17 @@ else:
                     st.markdown("---")
                     
                     st.markdown("**Original Article**")
-                    if row.get("Original_Headline") and str(row["Original_Headline"]).strip() not in ["", "nan"]:
+                    if row.get("Original_Headline") and str(row["Original_Headline"]).strip():
                         st.markdown(f"**{row['Original_Headline']}**")
-                    st.write(row["Original_Claim"])
+                    if row.get("Original_Claim") and str(row["Original_Claim"]).strip():
+                        st.write(row["Original_Claim"])
+                    else:
+                        st.write("No summary provided.")
                     
-                    if row.get("Original_Link") and str(row["Original_Link"]).strip() not in ["", "nan"]:
-                        st.markdown(f"[→ Link to Original Article]({row['Original_Link']})")
+                    if row.get("Original_Link") and str(row["Original_Link"]).strip():
+                        st.markdown(f"[🔗 Link to Original Article]({row['Original_Link']})")
+                    else:
+                        st.caption("No direct link to original article provided.")
                     
                     if st.button("🗑️ Delete", key=f"del_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
