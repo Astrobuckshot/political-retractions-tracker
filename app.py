@@ -40,9 +40,8 @@ def save_data(df):
 
 def categorize_politics(text):
     text = str(text).lower()
-    national = {"trump", "biden", "harris", "musk", "epstein", "congress", "election", "white house", "potus", "administration"}
+    national = {"trump", "biden", "harris", "musk", "epstein", "congress", "election", "white house", "potus", "administration", "newsom"}
     state = {"sacramento", "san francisco", "denver", "chicago", "california", "texas", "new york", "florida", "governor"}
-    
     if any(k in text for k in national):
         return "National"
     elif any(k in text for k in state):
@@ -53,12 +52,12 @@ def categorize_politics(text):
 def fetch_political_retractions(days_back=14):
     since = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     
-    # Very strict query focused on media self-corrections
+    # Extremely strict query aimed at media self-corrections
     query = (
-        '("Correction:" OR "Retraction:" OR "Clarification:" OR "A correction" OR '
-        '"This article was corrected" OR "We regret to inform" OR "Corrects:" OR '
-        '"retracted the following" OR "updated to correct") AND '
-        '(trump OR biden OR harris OR musk OR epstein OR election OR congress OR administration OR newsom)'
+        '("Correction:" OR "Retraction:" OR "Clarification:" OR "A correction" OR "This article was corrected" OR '
+        '"We regret" OR "Corrects:" OR "retracted the following" OR "updated to correct" OR "editor\'s note" OR '
+        '"in our story" OR "in an earlier version") AND '
+        '(trump OR biden OR harris OR musk OR epstein OR election OR congress OR administration)'
     )
     
     url = f"https://newsapi.org/v2/everything?q={query}&language=en&from={since}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
@@ -71,21 +70,30 @@ def fetch_political_retractions(days_back=14):
         new_entries = []
         for art in articles:
             title = art.get("title") or ""
-            description = art.get("description") or ""
+            desc = art.get("description") or ""
+            content = art.get("content") or ""
             
             if not title:
                 continue
-            
-            # Strict title filter - must look like a correction
-            title_lower = title.lower()
-            if not any(word in title_lower for word in ["correct", "retract", "clarif", "regret", "error", "apolog"]):
-                continue
-            
-            # Avoid non-media-correction noise
-            if any(skip in title_lower for skip in ["talking about", "discusses", "regarding", "interview"]):
-                continue
                 
-            cat = categorize_politics(title + " " + description)
+            full_text = (title + " " + desc + " " + content).lower()
+            
+            # Must contain correction language
+            correction_keywords = ["correct", "retract", "clarif", "regret", "error", "apolog", "in our story", "earlier version"]
+            if not any(kw in full_text for kw in correction_keywords):
+                continue
+            
+            # Block common false positives
+            skip_phrases = ["talking about", "discusses", "regarding", "interview", "has various", "clarifies his", "whoopi", "goldberg"]
+            if any(skip in full_text for skip in skip_phrases):
+                continue
+            
+            # Prefer titles that look like corrections
+            title_lower = title.lower()
+            if not any(word in title_lower for word in ["correct", "retract", "clarif", "regret", "error"]):
+                continue
+            
+            cat = categorize_politics(full_text)
             
             new_entries.append({
                 "ID": generate_id(title, art.get("publishedAt")),
@@ -95,7 +103,7 @@ def fetch_political_retractions(days_back=14):
                 "Outlet": art.get("source", {}).get("name", "Unknown"),
                 "Category": cat,
                 "Original_Claim": "Original story referenced in this correction (see full article)",
-                "Correction": description or "Full correction details available at the link.",
+                "Correction": desc or "Full correction details available at the link.",
                 "Link": art.get("url"),
                 "Source": "NewsAPI Auto",
                 "Views_Estimate": "N/A"
@@ -112,7 +120,6 @@ st.markdown("**Daily catalog of media self-retractions & corrections in politica
 
 df = load_data()
 
-# Sidebar
 st.sidebar.header("🔄 Automation")
 if st.sidebar.button("🔍 Search for New Retractions Now", type="primary"):
     with st.spinner("Searching for real media self-corrections..."):
@@ -125,7 +132,7 @@ if st.sidebar.button("🔍 Search for New Retractions Now", type="primary"):
         else:
             st.info("No qualifying self-corrections found in the last 14 days.")
 
-# Main Display
+# Display
 st.subheader("Recent Retractions & Corrections")
 
 if df.empty:
@@ -172,9 +179,5 @@ else:
                 st.write(row["Original_Claim"])
                 st.caption(f"Source: {row['Source']}")
 
-# Disclaimer
 st.markdown("---")
-st.caption("""
-**Disclaimer**: This app automatically collects self-retractions and corrections published by media outlets. 
-It is **not** a fact-checking service. Always read the original articles for full context.
-""")
+st.caption("**Disclaimer**: This app collects self-retractions published by media outlets. It is not a fact-checking service.")
