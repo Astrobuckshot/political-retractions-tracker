@@ -1,16 +1,8 @@
 import streamlit as st
 import pandas as pd
-import requests
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import hashlib
-
-# ====================== SECURE API KEY ======================
-if "NEWS_API_KEY" not in st.secrets:
-    st.error("⚠️ NEWS_API_KEY not found in secrets.")
-    st.stop()
-
-NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
 
 CSV_FILE = "political_retractions.csv"
 
@@ -21,13 +13,12 @@ def generate_id(title, date):
 def load_data():
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
-        required_cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
-                        "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
-        for col in required_cols:
+        required = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
+                    "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
+        for col in required:
             if col not in df.columns:
                 df[col] = ""
         return df
-    # Create new file
     cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
             "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
     df = pd.DataFrame(columns=cols)
@@ -39,63 +30,61 @@ def save_data(df):
 
 def categorize_politics(text):
     text = str(text).lower()
-    if any(k in text for k in ["trump", "biden", "harris", "musk", "epstein", "congress", "election", "white house"]):
+    if any(k in text for k in ["trump", "biden", "harris", "musk", "epstein", "congress", "election", "white house", "kirk"]):
         return "National"
     elif any(k in text for k in ["sacramento", "san francisco", "denver", "chicago", "california", "texas", "governor"]):
         return "State"
     return "Global/International"
 
-# ==================== MAIN APP ====================
+# ==================== APP ====================
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
-st.title("📰 Automatic Political Retractions & Corrections Tracker")
-st.markdown("**Daily catalog of media self-retractions & corrections in political news** • Newest on top")
+st.title("📰 Political Retractions & Corrections Tracker")
+st.markdown("**High-quality catalog of media self-corrections** • Focused on major outlets like NYT Corrections")
 
 df = load_data()
 
-# ====================== MANUAL ENTRY (Main Feature) ======================
-st.sidebar.header("➕ Add New Entry")
-with st.sidebar.expander("Add a New Retraction / Correction", expanded=True):
-    with st.form("manual_form"):
-        title = st.text_input("Retraction Title *")
-        outlet = st.text_input("News Outlet * (e.g. New York Times)")
+# ====================== ADD NEW ENTRY (Prominent) ======================
+st.header("➕ Add New Retraction / Correction")
+with st.form("add_entry"):
+    colA, colB = st.columns(2)
+    with colA:
+        title = st.text_input("Title of the Correction Article *")
+        outlet = st.text_input("Outlet * (e.g. New York Times)")
         category = st.selectbox("Category", ["National", "State", "Global/International"])
-        original = st.text_area("Original Claim / Story Summary", height=100)
-        correction = st.text_area("Retraction / Correction Text *", height=150)
-        link = st.text_input("Link to Article")
+    with colB:
+        link = st.text_input("Link to the Correction")
         views = st.text_input("Estimated Original Views (optional)")
-        
-        if st.form_submit_button("Add to Database"):
-            if title and outlet and correction:
-                new_row = pd.DataFrame([{
-                    "ID": generate_id(title, datetime.now()),
-                    "Date": datetime.now().strftime("%Y-%m-%d"),
-                    "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
-                    "Title": title,
-                    "Outlet": outlet,
-                    "Category": category,
-                    "Original_Claim": original or "See linked article",
-                    "Correction": correction,
-                    "Link": link,
-                    "Source": "Manual Entry",
-                    "Views_Estimate": views or "N/A"
-                }])
-                df = pd.concat([df, new_row], ignore_index=True)
-                save_data(df)
-                st.success("✅ Entry added successfully!")
-                st.rerun()
-            else:
-                st.error("Title, Outlet, and Correction text are required.")
 
-# Light Auto Search
-st.sidebar.header("🔄 Auto Search")
-if st.sidebar.button("🔍 Run Quick Auto Search"):
-    st.info("Auto search is limited. For best results, use Manual Entry above.")
+    original = st.text_area("Original False/Problematic Claim", height=120)
+    correction = st.text_area("Retraction / Correction Text *", height=150)
 
-# ====================== MAIN DISPLAY ======================
-st.subheader("Recent Retractions & Corrections")
+    if st.form_submit_button("✅ Add to Tracker"):
+        if title and outlet and correction:
+            new_row = pd.DataFrame([{
+                "ID": generate_id(title, datetime.now()),
+                "Date": datetime.now().strftime("%Y-%m-%d"),
+                "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
+                "Title": title,
+                "Outlet": outlet,
+                "Category": category,
+                "Original_Claim": original or "See linked article",
+                "Correction": correction,
+                "Link": link,
+                "Source": "Manual Entry",
+                "Views_Estimate": views or "N/A"
+            }])
+            df = pd.concat([df, new_row], ignore_index=True)
+            save_data(df)
+            st.success("✅ Entry successfully added!")
+            st.rerun()
+        else:
+            st.error("Title, Outlet, and Correction text are required.")
+
+# Display
+st.subheader("📋 Current Database")
 
 if df.empty:
-    st.info("No entries yet. Use the sidebar to add your first retraction.")
+    st.info("No entries yet. Add your first one using the form above.")
 else:
     df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
     df = df.sort_values(by="Date", ascending=False)
@@ -110,24 +99,16 @@ else:
             cat_df = df[df["Category"] == cat_key]
             for _, row in cat_df.iterrows():
                 with st.container(border=True):
-                    st.caption(f"**{row['Formatted_Date']}**")
-                    st.markdown(f"**{row['Outlet']}**")
+                    st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
                     st.markdown(f"**[{row['Title']}]({row['Link']})**")
-                    
                     st.markdown("**🔴 Retraction / Correction**")
                     st.write(row["Correction"])
-                    
                     st.markdown("**Original Story**")
                     st.write(row["Original_Claim"])
-                    
-                    if row.get("Views_Estimate") and row["Views_Estimate"] != "N/A":
-                        st.caption(f"📊 Est. Original Views: {row['Views_Estimate']}")
-                    
+                    if row.get("Views_Estimate") != "N/A":
+                        st.caption(f"📊 Est. Views: {row['Views_Estimate']}")
                     st.caption(f"Source: {row['Source']}")
 
-# Disclaimer
 st.markdown("---")
-st.caption("""
-**Disclaimer**: This app collects self-retractions and corrections published by media outlets. 
-It is **not** a fact-checking service. Always read the original articles for full context.
-""")
+st.caption("**Tip**: Check NYT Corrections daily → https://www.nytimes.com/section/corrections  \n"
+           "**Disclaimer**: This is a curated tracker of media self-corrections. Not a fact-checking service.")
