@@ -44,6 +44,13 @@ st.markdown("**Curated tracker focused on media self-corrections**")
 
 df = load_data()
 
+# ====================== SIDEBAR LINKS ======================
+st.sidebar.markdown("### 📌 Quick Corrections Pages")
+st.sidebar.markdown("[🗞️ New York Times Corrections](https://www.nytimes.com/section/corrections)")
+st.sidebar.markdown("[📝 Washington Post Corrections](https://www.washingtonpost.com/newsroom/corrections/)")
+st.sidebar.markdown("[📺 CNN Corrections](https://www.cnn.com/corrections)")
+st.sidebar.markdown("---")
+
 # ====================== ADD NEW ENTRY ======================
 st.header("➕ Add New Retraction / Correction")
 with st.form("add_entry"):
@@ -56,7 +63,7 @@ with st.form("add_entry"):
         correction_link = st.text_input("Link to Correction Article")
         original_link = st.text_input("Link to Original Article (if available)")
 
-    original_headline = st.text_input("Original Article Headline")
+    original_headline = st.text_input("Original Article Headline (optional)")
     original_claim = st.text_area("Summary of What the Original Article Claimed", height=120)
     correction = st.text_area("Retraction / Correction Text *", height=180)
 
@@ -119,8 +126,6 @@ else:
                     
                     if row.get("Original_Link") and str(row["Original_Link"]).strip():
                         st.markdown(f"[🔗 Link to Original Article]({row['Original_Link']})")
-                    else:
-                        st.caption("No direct link to original article provided.")
                     
                     if st.button("🗑️ Delete", key=f"del_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
@@ -128,4 +133,4 @@ else:
                         st.rerun()
 
 st.markdown("---")
-st.caption("**Daily Tip**: Visit [NYT Corrections](https://www.nytimes.com/section/corrections)")
+st.caption("**Tip**: Use the sidebar links to check daily corrections from major outlets.")
