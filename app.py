@@ -17,7 +17,8 @@ def load_data():
         try:
             df = pd.read_csv(CSV_FILE)
             required = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
-                        "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
+                        "Original_Headline", "Original_Claim", "Original_Link",
+                        "Correction", "Link", "Source", "Views_Estimate"]
             for col in required:
                 if col not in df.columns:
                     df[col] = ""
@@ -25,7 +26,8 @@ def load_data():
         except:
             pass
     cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
-            "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
+            "Original_Headline", "Original_Claim", "Original_Link",
+            "Correction", "Link", "Source", "Views_Estimate"]
     df = pd.DataFrame(columns=cols)
     df.to_csv(CSV_FILE, index=False)
     return df
@@ -38,18 +40,12 @@ def save_data(df):
 # ==================== APP ====================
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
 st.title("📰 Political Retractions & Corrections Tracker")
-st.markdown("**Curated tracker focused on major outlets like NYT Corrections**")
+st.markdown("**Curated tracker focused on media self-corrections**")
 
 df = load_data()
 
-# Quick Links
-st.sidebar.markdown("### Useful Links")
-st.sidebar.markdown("[NYT Corrections](https://www.nytimes.com/section/corrections)")
-st.sidebar.markdown("[WaPo Corrections](https://www.washingtonpost.com/newsroom/corrections/)")
-st.sidebar.markdown("[CNN Corrections](https://www.cnn.com/corrections)")
-
-# ====================== MANUAL ENTRY ======================
-st.header("➕ Add New Retraction / Correction (from NYT, etc.)")
+# ====================== ADD NEW ENTRY ======================
+st.header("➕ Add New Retraction / Correction")
 with st.form("add_entry"):
     colA, colB = st.columns(2)
     with colA:
@@ -57,13 +53,15 @@ with st.form("add_entry"):
         outlet = st.text_input("Outlet *", value="New York Times")
         category = st.selectbox("Category", ["National", "State", "Global/International"])
     with colB:
-        link = st.text_input("Direct Link to Correction")
+        correction_link = st.text_input("Link to Correction Article")
+        original_link = st.text_input("Link to Original Article (if different)")
         views = st.text_input("Est. Original Views (optional)")
 
-    original = st.text_area("What the Original Article Said (problematic claim)", height=120)
-    correction = st.text_area("The Correction / Retraction Text *", height=180)
+    original_headline = st.text_input("Original Article Headline")
+    original_claim = st.text_area("What the Original Article Claimed", height=100)
+    correction = st.text_area("Retraction / Correction Text *", height=150)
 
-    if st.form_submit_button("✅ Add to Tracker"):
+    if st.form_submit_button("✅ Add Entry"):
         if title and outlet and correction:
             new_row = pd.DataFrame([{
                 "ID": generate_id(title, datetime.now()),
@@ -72,10 +70,12 @@ with st.form("add_entry"):
                 "Title": title,
                 "Outlet": outlet,
                 "Category": category,
-                "Original_Claim": original or "See linked article",
+                "Original_Headline": original_headline,
+                "Original_Claim": original_claim or "See linked article",
+                "Original_Link": original_link,
                 "Correction": correction,
-                "Link": link,
-                "Source": "Manual (NYT Corrections etc.)",
+                "Link": correction_link,
+                "Source": "Manual",
                 "Views_Estimate": views or "N/A"
             }])
             df = pd.concat([df, new_row], ignore_index=True)
@@ -85,11 +85,11 @@ with st.form("add_entry"):
         else:
             st.error("Title, Outlet, and Correction text are required.")
 
-# Display
+# ====================== DISPLAY ======================
 st.subheader(f"📋 Current Entries ({len(df)})")
 
 if df.empty:
-    st.info("No entries yet. Start adding from NYT Corrections page.")
+    st.info("No entries yet. Add some above.")
 else:
     df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
     df = df.sort_values(by="Date", ascending=False)
@@ -105,16 +105,27 @@ else:
                 with st.container(border=True):
                     st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
                     st.markdown(f"**[{row['Title']}]({row.get('Link', '')})**")
+                    
                     st.markdown("**🔴 Retraction / Correction**")
                     st.write(row["Correction"])
-                    st.markdown("**Original Story**")
+                    
+                    st.markdown("---")   # Separator
+                    
+                    st.markdown("**Original Article**")
+                    if row.get("Original_Headline"):
+                        st.markdown(f"**{row['Original_Headline']}**")
                     st.write(row["Original_Claim"])
+                    
+                    if row.get("Original_Link"):
+                        st.markdown(f"[→ Link to Original Article]({row['Original_Link']})")
+                    
                     if row.get("Views_Estimate") and row["Views_Estimate"] != "N/A":
-                        st.caption(f"📊 Est. Views: {row['Views_Estimate']}")
+                        st.caption(f"📊 Est. Original Views: {row['Views_Estimate']}")
+                    
                     if st.button("🗑️ Delete", key=f"del_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
                         save_data(df)
                         st.rerun()
 
 st.markdown("---")
-st.caption("**Daily Routine Tip**: Visit https://www.nytimes.com/section/corrections every day and add relevant political ones here.")
+st.caption("**Daily Tip**: Visit [NYT Corrections](https://www.nytimes.com/section/corrections) regularly")
