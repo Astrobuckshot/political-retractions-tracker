@@ -29,7 +29,6 @@ def load_data():
             if col not in df.columns:
                 df[col] = "" if col in ["Original_Claim", "Correction", "Source", "Views_Estimate"] else None
         return df
-    # Create new
     cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
             "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
     df = pd.DataFrame(columns=cols)
@@ -42,7 +41,7 @@ def save_data(df):
 def categorize_politics(text):
     text = str(text).lower()
     national = {"trump", "biden", "harris", "musk", "epstein", "congress", "election", "white house", "potus", "administration"}
-    state = {"sacramento", "san francisco", "denver", "chicago", "california", "texas", "new york", "florida", "governor", "state legislature"}
+    state = {"sacramento", "san francisco", "denver", "chicago", "california", "texas", "new york", "florida", "governor"}
     
     if any(k in text for k in national):
         return "National"
@@ -53,7 +52,13 @@ def categorize_politics(text):
 @st.cache_data(ttl=3600)
 def fetch_political_retractions(days_back=14):
     since = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
-    query = '(retraction OR correction OR erratum OR "we regret" OR clarifies OR "corrected" OR "false report" OR apologizes) (trump OR biden OR musk OR epstein OR election OR scandal OR administration OR congress OR government)'
+    
+    # Much more targeted query - looking for actual self-corrections
+    query = (
+        '("Correction:" OR "Retraction:" OR "We regret" OR "Clarification:" OR "Corrects" OR '
+        '"A correction" OR "This article was corrected" OR "Updated with correction") AND '
+        '(trump OR biden OR harris OR musk OR epstein OR election OR congress OR administration)'
+    )
     
     url = f"https://newsapi.org/v2/everything?q={query}&language=en&from={since}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
     
@@ -65,7 +70,11 @@ def fetch_political_retractions(days_back=14):
         new_entries = []
         for art in articles:
             title = art.get("title", "")
-            if not title or not any(k in title.lower() for k in ["retract", "correct", "erratum", "regret", "clarif"]):
+            if not title:
+                continue
+            
+            # Extra filter: Prefer titles that look like corrections
+            if not any(word in title.lower() for word in ["correct", "retract", "clarif", "regret", "error"]):
                 continue
                 
             cat = categorize_politics(title + " " + art.get("description", ""))
@@ -77,8 +86,8 @@ def fetch_political_retractions(days_back=14):
                 "Title": title,
                 "Outlet": art.get("source", {}).get("name", "Unknown"),
                 "Category": cat,
-                "Original_Claim": "Original story referenced in retraction (see link for full details)",
-                "Correction": art.get("description", "Full correction at link"),
+                "Original_Claim": "Original story referenced in this correction (see full article)",
+                "Correction": art.get("description", "Full correction details available at the link."),
                 "Link": art.get("url"),
                 "Source": "NewsAPI Auto",
                 "Views_Estimate": "N/A"
@@ -91,14 +100,14 @@ def fetch_political_retractions(days_back=14):
 # ==================== MAIN APP ====================
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
 st.title("📰 Automatic Political Retractions & Corrections Tracker")
-st.markdown("**Daily catalog of media self-retractions & corrections** • Newest on top")
+st.markdown("**Daily catalog of media self-retractions & corrections in political news** • Newest on top")
 
 df = load_data()
 
 # Sidebar
 st.sidebar.header("🔄 Automation")
 if st.sidebar.button("🔍 Search for New Retractions Now", type="primary"):
-    with st.spinner("Searching recent retractions..."):
+    with st.spinner("Searching for media self-corrections..."):
         new_df = fetch_political_retractions(days_back=14)
         if not new_df.empty:
             combined = pd.concat([df, new_df]).drop_duplicates(subset=["ID"])
@@ -106,9 +115,9 @@ if st.sidebar.button("🔍 Search for New Retractions Now", type="primary"):
             st.success(f"✅ Added {len(new_df)} new entries!")
             st.rerun()
         else:
-            st.info("No new retractions found.")
+            st.info("No new self-corrections found in the last 14 days.")
 
-# Main Display - 3 Columns
+# Main Display - Wider Cards
 st.subheader("Recent Retractions & Corrections")
 
 if df.empty:
