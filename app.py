@@ -18,7 +18,7 @@ def load_data():
             df = pd.read_csv(CSV_FILE)
             required = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
                         "Original_Headline", "Original_Claim", "Original_Link",
-                        "Correction", "Link", "Source", "Views_Estimate"]
+                        "Correction", "Link", "Source"]
             for col in required:
                 if col not in df.columns:
                     df[col] = ""
@@ -27,7 +27,7 @@ def load_data():
             pass
     cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
             "Original_Headline", "Original_Claim", "Original_Link",
-            "Correction", "Link", "Source", "Views_Estimate"]
+            "Correction", "Link", "Source"]
     df = pd.DataFrame(columns=cols)
     df.to_csv(CSV_FILE, index=False)
     return df
@@ -55,10 +55,9 @@ with st.form("add_entry"):
     with colB:
         correction_link = st.text_input("Link to Correction Article")
         original_link = st.text_input("Link to Original Article (if different)")
-        views = st.text_input("Est. Original Views (optional)")
 
     original_headline = st.text_input("Original Article Headline (optional)")
-    original_claim = st.text_area("What the Original Article Claimed", height=100)
+    original_claim = st.text_area("What the Original Article Claimed", height=120)
     correction = st.text_area("Retraction / Correction Text *", height=180)
 
     if st.form_submit_button("✅ Add Entry"):
@@ -75,8 +74,7 @@ with st.form("add_entry"):
                 "Original_Link": original_link,
                 "Correction": correction,
                 "Link": correction_link,
-                "Source": "Manual",
-                "Views_Estimate": views or "N/A"
+                "Source": "Manual"
             }])
             df = pd.concat([df, new_row], ignore_index=True)
             save_data(df)
@@ -109,7 +107,7 @@ else:
                     st.markdown("**🔴 Retraction / Correction**")
                     st.write(row["Correction"])
                     
-                    st.markdown("---")  # Clear separator
+                    st.markdown("---")
                     
                     st.markdown("**Original Article**")
                     if row.get("Original_Headline") and str(row["Original_Headline"]).strip() not in ["", "nan"]:
@@ -118,9 +116,6 @@ else:
                     
                     if row.get("Original_Link") and str(row["Original_Link"]).strip() not in ["", "nan"]:
                         st.markdown(f"[→ Link to Original Article]({row['Original_Link']})")
-                    
-                    if row.get("Views_Estimate") and row["Views_Estimate"] != "N/A":
-                        st.caption(f"📊 Est. Original Views: {row['Views_Estimate']}")
                     
                     if st.button("🗑️ Delete", key=f"del_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
