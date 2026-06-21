@@ -52,11 +52,10 @@ def categorize_politics(text):
 def fetch_political_retractions(days_back=14):
     since = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     
-    # Extremely strict query aimed at media self-corrections
+    # Extremely strict - looking for self-corrections by media outlets
     query = (
         '("Correction:" OR "Retraction:" OR "Clarification:" OR "A correction" OR "This article was corrected" OR '
-        '"We regret" OR "Corrects:" OR "retracted the following" OR "updated to correct" OR "editor\'s note" OR '
-        '"in our story" OR "in an earlier version") AND '
+        '"We regret" OR "Corrects:" OR "editor\'s note" OR "in our story" OR "earlier version") AND '
         '(trump OR biden OR harris OR musk OR epstein OR election OR congress OR administration)'
     )
     
@@ -71,26 +70,22 @@ def fetch_political_retractions(days_back=14):
         for art in articles:
             title = art.get("title") or ""
             desc = art.get("description") or ""
-            content = art.get("content") or ""
-            
             if not title:
                 continue
                 
-            full_text = (title + " " + desc + " " + content).lower()
+            full_text = (title + " " + desc).lower()
             
-            # Must contain correction language
-            correction_keywords = ["correct", "retract", "clarif", "regret", "error", "apolog", "in our story", "earlier version"]
-            if not any(kw in full_text for kw in correction_keywords):
+            # Must have strong correction signal in title
+            correction_words = ["correction", "retraction", "clarification", "corrects", "we regret", "editor's note"]
+            if not any(word in title.lower() for word in correction_words):
                 continue
             
-            # Block common false positives
-            skip_phrases = ["talking about", "discusses", "regarding", "interview", "has various", "clarifies his", "whoopi", "goldberg"]
-            if any(skip in full_text for skip in skip_phrases):
-                continue
-            
-            # Prefer titles that look like corrections
-            title_lower = title.lower()
-            if not any(word in title_lower for word in ["correct", "retract", "clarif", "regret", "error"]):
+            # Block false positives aggressively
+            bad_phrases = [
+                "whoopi", "goldberg", "clarifies", "talking about", "discusses", "regarding", 
+                "interview", "has various", "stances on", "german ambassador", "rfk"
+            ]
+            if any(phrase in full_text for phrase in bad_phrases):
                 continue
             
             cat = categorize_politics(full_text)
@@ -103,7 +98,7 @@ def fetch_political_retractions(days_back=14):
                 "Outlet": art.get("source", {}).get("name", "Unknown"),
                 "Category": cat,
                 "Original_Claim": "Original story referenced in this correction (see full article)",
-                "Correction": desc or "Full correction details available at the link.",
+                "Correction": desc or "Full correction details at the link.",
                 "Link": art.get("url"),
                 "Source": "NewsAPI Auto",
                 "Views_Estimate": "N/A"
@@ -113,7 +108,7 @@ def fetch_political_retractions(days_back=14):
         st.error(f"Error fetching: {e}")
         return pd.DataFrame()
 
-# ==================== MAIN APP ====================
+# ==================== APP ====================
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
 st.title("📰 Automatic Political Retractions & Corrections Tracker")
 st.markdown("**Daily catalog of media self-retractions & corrections in political news** • Newest on top")
@@ -122,7 +117,7 @@ df = load_data()
 
 st.sidebar.header("🔄 Automation")
 if st.sidebar.button("🔍 Search for New Retractions Now", type="primary"):
-    with st.spinner("Searching for real media self-corrections..."):
+    with st.spinner("Searching very strictly for media self-corrections..."):
         new_df = fetch_political_retractions(days_back=14)
         if not new_df.empty:
             combined = pd.concat([df, new_df]).drop_duplicates(subset=["ID"])
@@ -132,7 +127,7 @@ if st.sidebar.button("🔍 Search for New Retractions Now", type="primary"):
         else:
             st.info("No qualifying self-corrections found in the last 14 days.")
 
-# Display
+# Display (3 columns)
 st.subheader("Recent Retractions & Corrections")
 
 if df.empty:
@@ -143,41 +138,21 @@ else:
     
     col1, col2, col3 = st.columns(3)
     
-    with col1:
-        st.markdown("### 🇺🇸 National")
-        for _, row in df[df["Category"] == "National"].iterrows():
-            with st.container(border=True):
-                st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
-                st.markdown(f"**[{row['Title']}]({row['Link']})**")
-                st.markdown("**🔴 Retraction / Correction**")
-                st.write(row["Correction"])
-                st.markdown("**Original Story**")
-                st.write(row["Original_Claim"])
-                st.caption(f"Source: {row['Source']}")
-
-    with col2:
-        st.markdown("### 🏛️ State")
-        for _, row in df[df["Category"] == "State"].iterrows():
-            with st.container(border=True):
-                st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
-                st.markdown(f"**[{row['Title']}]({row['Link']})**")
-                st.markdown("**🔴 Retraction / Correction**")
-                st.write(row["Correction"])
-                st.markdown("**Original Story**")
-                st.write(row["Original_Claim"])
-                st.caption(f"Source: {row['Source']}")
-
-    with col3:
-        st.markdown("### 🌍 Global")
-        for _, row in df[df["Category"] == "Global/International"].iterrows():
-            with st.container(border=True):
-                st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
-                st.markdown(f"**[{row['Title']}]({row['Link']})**")
-                st.markdown("**🔴 Retraction / Correction**")
-                st.write(row["Correction"])
-                st.markdown("**Original Story**")
-                st.write(row["Original_Claim"])
-                st.caption(f"Source: {row['Source']}")
+    for col, cat_name, cat_key in zip([col1, col2, col3], 
+                                     ["🇺🇸 National", "🏛️ State", "🌍 Global"], 
+                                     ["National", "State", "Global/International"]):
+        with col:
+            st.markdown(f"### {cat_name}")
+            cat_df = df[df["Category"] == cat_key]
+            for _, row in cat_df.iterrows():
+                with st.container(border=True):
+                    st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
+                    st.markdown(f"**[{row['Title']}]({row['Link']})**")
+                    st.markdown("**🔴 Retraction / Correction**")
+                    st.write(row["Correction"])
+                    st.markdown("**Original Story**")
+                    st.write(row["Original_Claim"])
+                    st.caption(f"Source: {row['Source']}")
 
 st.markdown("---")
 st.caption("**Disclaimer**: This app collects self-retractions published by media outlets. It is not a fact-checking service.")
