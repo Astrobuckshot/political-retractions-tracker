@@ -57,9 +57,9 @@ with st.form("add_entry"):
         original_link = st.text_input("Link to Original Article (if different)")
         views = st.text_input("Est. Original Views (optional)")
 
-    original_headline = st.text_input("Original Article Headline")
+    original_headline = st.text_input("Original Article Headline (optional)")
     original_claim = st.text_area("What the Original Article Claimed", height=100)
-    correction = st.text_area("Retraction / Correction Text *", height=150)
+    correction = st.text_area("Retraction / Correction Text *", height=180)
 
     if st.form_submit_button("✅ Add Entry"):
         if title and outlet and correction:
@@ -109,14 +109,14 @@ else:
                     st.markdown("**🔴 Retraction / Correction**")
                     st.write(row["Correction"])
                     
-                    st.markdown("---")   # Separator
+                    st.markdown("---")  # Clear separator
                     
                     st.markdown("**Original Article**")
-                    if row.get("Original_Headline"):
+                    if row.get("Original_Headline") and str(row["Original_Headline"]).strip() not in ["", "nan"]:
                         st.markdown(f"**{row['Original_Headline']}**")
                     st.write(row["Original_Claim"])
                     
-                    if row.get("Original_Link"):
+                    if row.get("Original_Link") and str(row["Original_Link"]).strip() not in ["", "nan"]:
                         st.markdown(f"[→ Link to Original Article]({row['Original_Link']})")
                     
                     if row.get("Views_Estimate") and row["Views_Estimate"] != "N/A":
@@ -128,4 +128,4 @@ else:
                         st.rerun()
 
 st.markdown("---")
-st.caption("**Daily Tip**: Visit [NYT Corrections](https://www.nytimes.com/section/corrections) regularly")
+st.caption("**Daily Tip**: Visit [NYT Corrections](https://www.nytimes.com/section/corrections)")
