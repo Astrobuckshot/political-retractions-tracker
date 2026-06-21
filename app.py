@@ -24,7 +24,6 @@ def load_data():
             return df
         except:
             pass
-    # Create new
     cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
             "Original_Claim", "Correction", "Link", "Source", "Views_Estimate"]
     df = pd.DataFrame(columns=cols)
@@ -39,11 +38,11 @@ def save_data(df):
 # ==================== APP ====================
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
 st.title("📰 Political Retractions & Corrections Tracker")
-st.markdown("**Curated tracker** • Manual entry recommended • Delete bad entries easily")
+st.markdown("**Curated tracker** • Delete bad entries = they stay gone")
 
 df = load_data()
 
-# ====================== ADD NEW ENTRY ======================
+# ====================== MANUAL ENTRY ======================
 st.header("➕ Add New Retraction / Correction")
 with st.form("add_entry"):
     colA, colB = st.columns(2)
@@ -77,10 +76,8 @@ with st.form("add_entry"):
             save_data(df)
             st.success("✅ Entry added!")
             st.rerun()
-        else:
-            st.error("Title, Outlet, and Correction text are required.")
 
-# ====================== DISPLAY WITH DELETE BUTTONS ======================
+# ====================== DISPLAY + DELETE ======================
 st.subheader(f"📋 Current Entries ({len(df)})")
 
 if df.empty:
@@ -96,30 +93,22 @@ else:
                                      ["National", "State", "Global/International"]):
         with col:
             st.markdown(f"### {cat_name}")
-            cat_df = df[df["Category"] == cat_key].copy()
-            
-            for idx, row in cat_df.iterrows():
+            for _, row in df[df["Category"] == cat_key].iterrows():
                 with st.container(border=True):
                     st.caption(f"**{row['Formatted_Date']}** — {row['Outlet']}")
                     st.markdown(f"**[{row['Title']}]({row.get('Link', '')})**")
-                    
                     st.markdown("**🔴 Retraction / Correction**")
                     st.write(row["Correction"])
-                    
                     st.markdown("**Original Story**")
                     st.write(row["Original_Claim"])
-                    
                     if row.get("Views_Estimate") and row["Views_Estimate"] != "N/A":
                         st.caption(f"📊 Est. Views: {row['Views_Estimate']}")
                     
-                    st.caption(f"Source: {row['Source']}")
-                    
-                    # Delete button for each entry
-                    if st.button("🗑️ Delete This Entry", key=f"del_{row['ID']}"):
+                    if st.button("🗑️ Remove This Entry", key=f"del_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
                         save_data(df)
-                        st.success("Entry deleted.")
+                        st.success("Entry removed permanently.")
                         st.rerun()
 
 st.markdown("---")
-st.caption("**Tip**: Use the Delete buttons to remove bad automated entries (Whoopi, RFK, etc.)")
+st.caption("**Good news**: Once you delete a bad entry (Whoopi, RFK, etc.), it should not come back on future searches.")
