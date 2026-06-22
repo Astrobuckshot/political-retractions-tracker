@@ -48,20 +48,24 @@ OUTLETS = [
 
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
 
-# Custom CSS - Smaller sidebar + Wider cards
+# === CUSTOM CSS: Smaller sidebar + WIDER & SHORTER cards ===
 st.markdown("""
 <style>
     section[data-testid="stSidebar"] {
-        width: 220px !important;
-        min-width: 220px !important;
+        width: 200px !important;
+        min-width: 200px !important;
     }
     .main .block-container {
-        padding-top: 2rem;
-        max-width: 1400px;
+        padding-top: 1.5rem;
+        max-width: 1600px;
     }
     div[data-testid="stContainer"] {
-        height: 480px !important;
+        height: 260px !important;   /* Much shorter cards */
+        overflow-y: auto;
     }
+    h3 { font-size: 1.1rem !important; }
+    p, li { font-size: 0.92rem !important; }
+    .stMarkdown { margin-bottom: 0.4rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,7 +99,7 @@ with st.sidebar:
                         "ID": generate_id(title, datetime.now()),
                         "Date": datetime.now().strftime("%Y-%m-%d"),
                         "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
-                        "Title": title[:120],
+                        "Title": title[:130],
                         "Outlet": "New York Times",
                         "Category": "National",
                         "Original_Headline": "See full correction",
@@ -130,7 +134,7 @@ with st.sidebar:
     st.markdown("**Quick Links**")
     st.markdown("[NYT Corrections](https://www.nytimes.com/section/corrections)")
 
-# ==================== MAIN AREA ====================
+# ==================== MAIN DISPLAY ====================
 search_term = st.text_input("🔎 Search all entries", "")
 
 st.subheader(f"Current Entries ({len(df)})")
@@ -140,7 +144,7 @@ if search_term:
     filtered_df = filtered_df[filtered_df.apply(lambda row: search_term.lower() in str(row).lower(), axis=1)]
 
 if filtered_df.empty:
-    st.info("No entries yet. Use the sidebar tools.")
+    st.info("No entries yet. Use sidebar tools.")
 else:
     filtered_df = filtered_df.sort_values(by="Date", ascending=False)
     
@@ -209,4 +213,4 @@ with st.form("add_entry"):
         else:
             st.error("Required fields missing.")
 
-st.caption("Smaller sidebar • Wider cards")
+st.caption("Wider & shorter cards • Compact sidebar")
