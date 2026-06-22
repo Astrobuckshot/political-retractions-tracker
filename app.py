@@ -47,15 +47,34 @@ OUTLETS = [
 ]
 
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
+
+# Custom CSS - Smaller sidebar + Wider cards
+st.markdown("""
+<style>
+    section[data-testid="stSidebar"] {
+        width: 220px !important;
+        min-width: 220px !important;
+    }
+    .main .block-container {
+        padding-top: 2rem;
+        max-width: 1400px;
+    }
+    div[data-testid="stContainer"] {
+        height: 480px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("📰 Political Retractions & Corrections Tracker")
 st.markdown("**Strict tracker** — Only clear self-corrections & retractions.")
 
 df = load_data()
 
-# ==================== SIDEBAR (Compact) ====================
+# ==================== COMPACT SIDEBAR ====================
 with st.sidebar:
-    st.header("🔄 Auto Tools")
-    if st.button("🌐 Scrape NYT Corrections (Live)", use_container_width=True):
+    st.header("🔄 Tools")
+    
+    if st.button("🌐 Scrape NYT Corrections", use_container_width=True):
         try:
             from bs4 import BeautifulSoup
             import requests
@@ -76,7 +95,7 @@ with st.sidebar:
                         "ID": generate_id(title, datetime.now()),
                         "Date": datetime.now().strftime("%Y-%m-%d"),
                         "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
-                        "Title": title[:150],
+                        "Title": title[:120],
                         "Outlet": "New York Times",
                         "Category": "National",
                         "Original_Headline": "See full correction",
@@ -84,7 +103,7 @@ with st.sidebar:
                         "Original_Link": link,
                         "Correction": title,
                         "Link": link,
-                        "Source": "NYT Corrections Page"
+                        "Source": "NYT Auto"
                     }
                     new_entries.append(new_row)
             
@@ -92,29 +111,27 @@ with st.sidebar:
                 new_df = pd.DataFrame(new_entries)
                 df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet"])
                 save_data(df)
-                st.success(f"✅ Added {len(new_entries)} NYT corrections!")
+                st.success(f"Added {len(new_entries)} entries!")
                 st.rerun()
-            else:
-                st.info("No new corrections found today.")
         except Exception as e:
-            st.error(f"Scrape error: {e}")
+            st.error(f"Error: {e}")
 
     if st.button("📊 Load Real Examples", use_container_width=True):
         samples = [
-            {"Date": "2026-05-24", "Formatted_Date": "May 24, 2026", "Title": "Florida 20th District Racial Breakdown", "Outlet": "New York Times", "Category": "National", "Original_Headline": "Florida’s 20th District is a majority-Black district", "Original_Claim": "Called it a majority-Black district", "Original_Link": "", "Correction": "It is a majority-minority district, not a majority-Black district. We deleted the earlier post.", "Link": "https://x.com/nytimes/status/2058581220473352276", "Source": "X @nytimes"},
-            {"Date": "2026-06-20", "Formatted_Date": "Jun 20, 2026", "Title": "Mets Losing Streak Date Error", "Outlet": "New York Times", "Category": "National", "Original_Headline": "Mets suffered 11th straight loss on wrong day", "Original_Claim": "Wrong date for losing streak", "Original_Link": "", "Correction": "Because of an editing error, an earlier version misstated which day the Mets suffered their 11th straight loss.", "Link": "", "Source": "NYT Correction"},
+            {"Date": "2026-05-24", "Formatted_Date": "May 24, 2026", "Title": "Florida 20th District Racial Breakdown", "Outlet": "New York Times", "Category": "National", "Original_Headline": "Florida’s 20th District is a majority-Black district", "Original_Claim": "Called it a majority-Black district", "Original_Link": "", "Correction": "It is a majority-minority district, not a majority-Black district.", "Link": "", "Source": "X @nytimes"},
+            {"Date": "2026-06-20", "Formatted_Date": "Jun 20, 2026", "Title": "Mets Losing Streak Date Error", "Outlet": "New York Times", "Category": "National", "Original_Headline": "Earlier version misstated date", "Original_Claim": "Wrong date for losing streak", "Original_Link": "", "Correction": "Because of an editing error, an earlier version misstated which day the Mets suffered their 11th straight loss.", "Link": "", "Source": "NYT"},
         ]
         new_df = pd.DataFrame(samples)
         df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet"])
         save_data(df)
-        st.success("✅ Loaded real examples!")
+        st.success("✅ Real examples loaded!")
         st.rerun()
 
-    st.markdown("### Quick Links")
+    st.markdown("**Quick Links**")
     st.markdown("[NYT Corrections](https://www.nytimes.com/section/corrections)")
 
-# ==================== SEARCH ====================
-search_term = st.text_input("🔎 Search all entries (title, outlet, keyword...)", "")
+# ==================== MAIN AREA ====================
+search_term = st.text_input("🔎 Search all entries", "")
 
 st.subheader(f"Current Entries ({len(df)})")
 
@@ -123,20 +140,17 @@ if search_term:
     filtered_df = filtered_df[filtered_df.apply(lambda row: search_term.lower() in str(row).lower(), axis=1)]
 
 if filtered_df.empty:
-    st.info("No entries yet. Use sidebar buttons.")
+    st.info("No entries yet. Use the sidebar tools.")
 else:
     filtered_df = filtered_df.sort_values(by="Date", ascending=False)
     
-    # === 3-COLUMN LAYOUT RESTORED + WIDER CARDS ===
     col1, col2, col3 = st.columns(3)
-    for col, cat_name, cat_key in zip([col1, col2, col3], 
-                                      ["National", "State", "Global"], 
-                                      ["National", "State", "Global/International"]):
+    for col, cat_name, cat_key in zip([col1, col2, col3], ["National", "State", "Global"], ["National", "State", "Global/International"]):
         with col:
             st.markdown(f"### {cat_name}")
             cat_df = filtered_df[filtered_df["Category"] == cat_key]
             for _, row in cat_df.iterrows():
-                with st.container(border=True, height=520):  # Taller boxes
+                with st.container(border=True):
                     st.caption(f"{row['Formatted_Date']} — {row['Outlet']} | {row.get('Source', 'Manual')}")
                     st.markdown(f"**{row['Title']}**")
                     
@@ -150,15 +164,13 @@ else:
                     
                     if str(row.get("Link", "")).strip():
                         st.markdown(f"[🔗 View Correction]({row['Link']})")
-                    if str(row.get("Original_Link", "")).strip():
-                        st.markdown(f"[🔗 Original]({row['Original_Link']})")
                     
                     if st.button("🗑️ Delete", key=f"del_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
                         save_data(df)
                         st.rerun()
 
-# ==================== ADD NEW ENTRY ====================
+# ==================== ADD ENTRY ====================
 st.header("➕ Add New Retraction / Correction")
 with st.form("add_entry"):
     colA, colB = st.columns(2)
@@ -195,6 +207,6 @@ with st.form("add_entry"):
             st.success("✅ Entry added!")
             st.rerun()
         else:
-            st.error("Title, Outlet, and Correction text required.")
+            st.error("Required fields missing.")
 
-st.caption("Wider + taller cards • 3-column layout restored")
+st.caption("Smaller sidebar • Wider cards")
