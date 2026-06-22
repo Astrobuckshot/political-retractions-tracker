@@ -25,6 +25,7 @@ def load_data():
             return df
         except:
             pass
+    # Create new file
     cols = ["ID", "Date", "Formatted_Date", "Title", "Outlet", "Category",
             "Original_Headline", "Original_Claim", "Original_Link",
             "Correction", "Link", "Source"]
@@ -48,70 +49,152 @@ OUTLETS = [
 
 st.set_page_config(page_title="Political Retractions Tracker", layout="wide")
 st.title("📰 Political Retractions & Corrections Tracker")
-st.markdown("**Strict tracker** — Only clear self-corrections & retractions.")
+st.markdown("**Strict tracker** — Only clear self-corrections & retractions by the outlet.")
 
 df = load_data()
 
 # ==================== SIDEBAR ====================
 st.sidebar.header("🔄 Auto Tools")
 
-if st.sidebar.button("🌐 Scrape NYT Corrections (Live)"):
-    try:
-        from bs4 import BeautifulSoup
-        import requests
-        
-        url = "https://www.nytimes.com/section/corrections"
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, 'lxml')
-        
-        new_entries = []
-        articles = soup.find_all('article')[:8]
-        
-        for art in articles:
-            title_tag = art.find(['h3', 'h2'])
-            title = title_tag.get_text(strip=True) if title_tag else "NYT Correction"
-            link_tag = art.find('a')
-            link = "https://www.nytimes.com" + link_tag['href'] if link_tag and link_tag.get('href') else ""
+col1, col2 = st.sidebar.columns(2)
+with col1:
+    if st.button("🌐 Scrape NYT Corrections (Live)"):
+        try:
+            from bs4 import BeautifulSoup
+            import requests
+            url = "https://www.nytimes.com/section/corrections"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            response = requests.get(url, headers=headers, timeout=10)
+            soup = BeautifulSoup(response.text, 'lxml')
             
-            # STRICT FILTER - only real corrections
-            lower_title = title.lower()
-            if any(kw in lower_title for kw in ["correction", "earlier version", "misstated", "incorrectly stated", "retract", "clarif"]):
-                new_row = {
-                    "ID": generate_id(title, datetime.now()),
-                    "Date": datetime.now().strftime("%Y-%m-%d"),
-                    "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
-                    "Title": title,
-                    "Outlet": "New York Times",
-                    "Category": "National",
-                    "Original_Headline": "See correction page",
-                    "Original_Claim": "",
-                    "Original_Link": link,
-                    "Correction": f"Full details: {title}",
-                    "Link": link,
-                    "Source": "NYT Corrections Page (Auto)"
-                }
-                new_entries.append(new_row)
-        
-        if new_entries:
-            new_df = pd.DataFrame(new_entries)
-            df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet"])
+            new_entries = []
+            for art in soup.find_all('article')[:10]:
+                title_tag = art.find(['h3', 'h2'])
+                title = title_tag.get_text(strip=True) if title_tag else ""
+                link_tag = art.find('a')
+                link = "https://www.nytimes.com" + link_tag['href'] if link_tag else ""
+                
+                if title and any(kw in title.lower() for kw in ["correction", "earlier version", "misstated", "incorrectly"]):
+                    new_row = {
+                        "ID": generate_id(title, datetime.now()),
+                        "Date": datetime.now().strftime("%Y-%m-%d"),
+                        "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
+                        "Title": title,
+                        "Outlet": "New York Times",
+                        "Category": "National",
+                        "Original_Headline": "See full correction",
+                        "Original_Claim": "",
+                        "Original_Link": link,
+                        "Correction": title,
+                        "Link": link,
+                        "Source": "NYT Corrections Page"
+                    }
+                    new_entries.append(new_row)
+            
+            if new_entries:
+                new_df = pd.DataFrame(new_entries)
+                df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet"])
+                save_data(df)
+                st.success(f"✅ Added {len(new_entries)} NYT corrections!")
+                st.rerun()
+            else:
+                st.info("No new corrections found today.")
+        except Exception as e:
+            st.error(f"Scrape error: {e}")
+
+with col2:
+    if st.button("📊 Load Demo Data"):
+        samples = [
+            {"Date": "2026-06-20", "Formatted_Date": "Jun 20, 2026", "Title": "Florida 20th District Racial Breakdown", "Outlet": "New York Times", "Category": "National", "Original_Headline": "Florida’s 20th District is a majority-Black district", "Original_Claim": "Called it a majority-Black district", "Original_Link": "", "Correction": "It is a majority-minority district, not a majority-Black district. We deleted the earlier post.", "Link": "https://x.com/nytimes", "Source": "X @nytimes"},
+            {"Date": "2026-06-18", "Formatted_Date": "Jun 18, 2026", "Title": "Pope Name Error", "Outlet": "Washington Post", "Category": "Global/International", "Original_Headline": "Pope Francis arrives...", "Original_Claim": "Named Pope Francis instead of Pope Leo", "Original_Link": "", "Correction": "Correction: A previous version incorrectly named Pope Francis instead of Pope Leo.", "Link": "", "Source": "X @washingtonpost"},
+            {"Date": "2026-06-15", "Formatted_Date": "Jun 15, 2026", "Title": "South Caucasus Misidentification", "Outlet": "Washington Post", "Category": "Global/International", "Original_Headline": "Earlier version had wrong location", "Original_Claim": "Wrong geographic description", "Original_Link": "", "Correction": "An earlier version misidentified the location in the South Caucasus.", "Link": "", "Source": "WaPo Correction"},
+        ]
+        new_df = pd.DataFrame(samples)
+        df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet"])
+        save_data(df)
+        st.success("✅ Demo data loaded!")
+        st.rerun()
+
+st.sidebar.markdown("### Quick Links")
+st.sidebar.markdown("[NYT Corrections](https://www.nytimes.com/section/corrections)")
+st.sidebar.markdown("[WaPo Corrections Policy](https://www.washingtonpost.com/policies-and-standards/#correctionspolicy)")
+
+# ==================== MAIN APP ====================
+search_term = st.text_input("🔎 Search all entries", "")
+
+st.subheader(f"Current Entries ({len(df)})")
+
+filtered_df = df.copy()
+if search_term:
+    filtered_df = filtered_df[filtered_df.apply(lambda row: search_term.lower() in str(row).lower(), axis=1)]
+
+if filtered_df.empty:
+    st.info("No entries yet. Click **Load Demo Data** or **Scrape NYT** in the sidebar.")
+else:
+    filtered_df = filtered_df.sort_values(by="Date", ascending=False)
+    
+    col1, col2, col3 = st.columns(3)
+    for col, cat_name, cat_key in zip([col1, col2, col3], ["National", "State", "Global"], ["National", "State", "Global/International"]):
+        with col:
+            st.markdown(f"### {cat_name}")
+            cat_df = filtered_df[filtered_df["Category"] == cat_key]
+            for _, row in cat_df.iterrows():
+                with st.container(border=True):
+                    st.caption(f"{row['Formatted_Date']} — {row['Outlet']} | {row.get('Source', 'Manual')}")
+                    st.markdown(f"**{row['Title']}**")
+                    st.markdown("**Correction:**")
+                    st.write(row["Correction"])
+                    
+                    orig = str(row.get("Original_Headline", "")).strip()
+                    if orig and orig.lower() not in ["nan", "not provided", ""]:
+                        st.markdown("**Original Article:**")
+                        st.write(orig)
+                    
+                    if str(row.get("Link", "")).strip():
+                        st.markdown(f"[🔗 View Correction]({row['Link']})")
+                    
+                    if st.button("🗑️ Delete", key=f"del_{row['ID']}"):
+                        df = df[df["ID"] != row["ID"]]
+                        save_data(df)
+                        st.rerun()
+
+# ==================== ADD MANUAL ENTRY ====================
+st.header("➕ Add New Retraction / Correction")
+with st.form("add_entry"):
+    colA, colB = st.columns(2)
+    with colA:
+        title = st.text_input("Title / Headline of Correction *")
+        outlet = st.selectbox("Outlet *", OUTLETS)
+        category = st.selectbox("Category", ["National", "State", "Global/International"])
+    with colB:
+        correction_link = st.text_input("Link to Correction")
+        original_link = st.text_input("Link to Original Article")
+        original_headline = st.text_input("Original Headline")
+    
+    original_claim = st.text_area("Original Claim (summary)", height=80)
+    correction_text = st.text_area("Correction Text *", height=120)
+    
+    if st.form_submit_button("Add Entry"):
+        if title and outlet and correction_text:
+            new_row = pd.DataFrame([{
+                "ID": generate_id(title, datetime.now()),
+                "Date": datetime.now().strftime("%Y-%m-%d"),
+                "Formatted_Date": datetime.now().strftime("%b %d, %Y"),
+                "Title": title.strip(),
+                "Outlet": outlet,
+                "Category": category,
+                "Original_Headline": original_headline.strip() or "Not provided",
+                "Original_Claim": original_claim.strip(),
+                "Original_Link": original_link.strip(),
+                "Correction": correction_text.strip(),
+                "Link": correction_link.strip(),
+                "Source": "Manual"
+            }])
+            df = pd.concat([df, new_row], ignore_index=True).drop_duplicates(subset=["Title", "Outlet"])
             save_data(df)
-            st.success(f"✅ Added {len(new_entries)} NYT corrections!")
+            st.success("✅ Entry added!")
             st.rerun()
         else:
-            st.info("No new clear corrections found on NYT today.")
-            
-    except ImportError:
-        st.error("BeautifulSoup not installed. Please add requirements.txt (see instructions above).")
-    except Exception as e:
-        st.error(f"Scrape failed: {e}")
+            st.error("Title, Outlet, and Correction text required.")
 
-if st.sidebar.button("🐦 Load Real X Examples"):
-    samples = [ ... ]  # (same good examples as before - I can expand if you want)
-    # ... (I'll keep it short here)
-
-# Rest of your app (search, display, add form) stays the same as last version
-# ... (copy the rest from my previous message if needed)
-
-st.caption("Make sure requirements.txt exists with beautifulsoup4 + lxml")
+st.caption("💡 Click **Load Demo Data** to see examples. Then use the scraper daily.")
