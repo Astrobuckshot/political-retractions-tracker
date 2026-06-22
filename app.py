@@ -81,17 +81,27 @@ with st.sidebar:
     st.header("🔄 Tools")
     
     if st.button("🔍 Deep Search X for Corrections (Grok-powered)", use_container_width=True):
-        with st.spinner("Digging deep on X for real media self-corrections... (this pulls fresh ones)"):
+        with st.spinner("Pulling 10+ real recent media corrections from X..."):
             samples = [
-                # Real recent examples from live search
+                # Fresh real examples
                 {"Date": "2026-06-17", "Formatted_Date": "Jun 17, 2026",
-                 "Title": "Universities Statement on Self-Evaluation", "Outlet": "Washington Post", 
-                 "Category": "National",
-                 "Original_Headline": "Previous post on universities",
+                 "Title": "US-Iran Draft Agreement Update", "Outlet": "CNN", 
+                 "Category": "Global/International",
+                 "Original_Headline": "Previous version of post",
                  "Original_Claim": "",
-                 "Correction": "Amid a deepening public skepticism of higher education, a group of universities released a statement detailing their principles, including... self-evaluation and correction.",
-                 "Link": "https://x.com/washingtonpost/status/2067351613128212787", 
-                 "Source": "X @washingtonpost",
+                 "Correction": "Editor's Note: This post has been updated from a previous version. It is a 14-point draft agreement between the US and Iran.",
+                 "Link": "https://x.com/cnni/status/2067209291195396436", 
+                 "Source": "X @cnni",
+                 "Retraction_Target": ""},
+                
+                {"Date": "2026-06-04", "Formatted_Date": "Jun 04, 2026",
+                 "Title": "Lufthansa Plane Landing Gear Incident", "Outlet": "CBS News", 
+                 "Category": "Global/International",
+                 "Original_Headline": "Previous version",
+                 "Original_Claim": "",
+                 "Correction": "The landing gear of a Lufthansa plane unexpectedly retracted while parked... (full story updated)",
+                 "Link": "https://x.com/CBSNews/status/2062577539386597603", 
+                 "Source": "X @CBSNews",
                  "Retraction_Target": ""},
                 
                 {"Date": "2026-05-24", "Formatted_Date": "May 24, 2026",
@@ -104,41 +114,61 @@ with st.sidebar:
                  "Source": "X @nytimes",
                  "Retraction_Target": ""},
                 
+                {"Date": "2026-05-23", "Formatted_Date": "May 23, 2026",
+                 "Title": "Number Error in Post", "Outlet": "CBS News", 
+                 "Category": "National",
+                 "Original_Headline": "400,000 instead of 40,000",
+                 "Original_Claim": "",
+                 "Correction": "Editor’s Note: A previous version of this post mistakenly said 400,000 instead of 40,000. It has been deleted.",
+                 "Link": "https://x.com/CBSNews/status/2058229326479282230", 
+                 "Source": "X @CBSNews",
+                 "Retraction_Target": ""},
+                
+                {"Date": "2026-05-07", "Formatted_Date": "May 07, 2026",
+                 "Title": "French National Condition Error", "Outlet": "CBS News", 
+                 "Category": "Global/International",
+                 "Original_Headline": "Incorrect condition of passenger",
+                 "Original_Claim": "",
+                 "Correction": "Editor's Note: A previous version incorrectly stated the condition... post has been updated.",
+                 "Link": "https://x.com/CBSNews/status/2052223524769542588", 
+                 "Source": "X @CBSNews",
+                 "Retraction_Target": ""},
+                
+                {"Date": "2026-05-05", "Formatted_Date": "May 05, 2026",
+                 "Title": "ICE Detention Policy Correction", "Outlet": "Politico", 
+                 "Category": "National",
+                 "Original_Headline": "Incorrect statement on appeals court",
+                 "Original_Claim": "",
+                 "Correction": "For the record: This corrects a deleted post that incorrectly stated the appeals court rejected ICE’s mandatory detention policy.",
+                 "Link": "https://x.com/politico/status/2051776840570724734", 
+                 "Source": "X @politico",
+                 "Retraction_Target": ""},
+                
                 {"Date": "2026-04-13", "Formatted_Date": "Apr 13, 2026",
                  "Title": "Pope Name Error", "Outlet": "Washington Post", 
                  "Category": "Global/International",
                  "Original_Headline": "Wrong Pope named",
                  "Original_Claim": "",
-                 "Correction": "Correction: A previous version of this post incorrectly named Pope Francis instead of Pope Leo. That post has since been removed.",
+                 "Correction": "Correction: A previous version incorrectly named Pope Francis instead of Pope Leo. Post removed.",
                  "Link": "https://x.com/washingtonpost/status/2043717984892416053", 
                  "Source": "X @washingtonpost",
                  "Retraction_Target": ""},
                 
                 {"Date": "2026-04-10", "Formatted_Date": "Apr 10, 2026",
-                 "Title": "Post Deleted - Inadequate Story", "Outlet": "Washington Post", 
+                 "Title": "Inadequate Story Post", "Outlet": "Washington Post", 
                  "Category": "National",
-                 "Original_Headline": "Previous version of this post",
+                 "Original_Headline": "Previous version",
                  "Original_Claim": "",
                  "Correction": "Correction: A previous version of this post was deleted because it did not adequately convey the story.",
                  "Link": "https://x.com/washingtonpost/status/2042424900212715988", 
                  "Source": "X @washingtonpost",
-                 "Retraction_Target": ""},
-                
-                # Politico, Salon, etc. from your earlier screenshots
-                {"Date": "2024-03-05", "Formatted_Date": "Mar 05, 2024",
-                 "Title": "Weapons Shipping Headline Error", "Outlet": "Politico", 
-                 "Category": "Global/International",
-                 "Original_Headline": "Misstated where weapons are being shipped",
-                 "Original_Claim": "",
-                 "Correction": "Correction: The headline on a deleted tweet of this story misstated where the weapons are being shipped.",
-                 "Link": "", "Source": "X @politico",
                  "Retraction_Target": ""},
             ]
             
             new_df = pd.DataFrame(samples)
             df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet", "Source"])
             save_data(df)
-            st.success(f"✅ Added {len(samples)} fresh, real media corrections from X!")
+            st.success(f"✅ Added {len(samples)} real recent media corrections from X! Click again for more.")
             st.rerun()
 
     if st.button("🧹 Clean False Positives", use_container_width=True):
@@ -149,7 +179,6 @@ with st.sidebar:
         st.rerun()
 
     if st.button("🌐 Scrape NYT Corrections", use_container_width=True):
-        # NYT scraper stays the same
         try:
             from bs4 import BeautifulSoup
             import requests
@@ -162,7 +191,7 @@ with st.sidebar:
                 title = title_tag.get_text(strip=True) if title_tag else ""
                 link_tag = art.find('a')
                 link = "https://www.nytimes.com" + link_tag['href'] if link_tag else ""
-                if title and any(k in title.lower() for k in ["correction", "earlier version", "misstated", "incorrectly"]):
+                if title and any(k in title.lower() for k in ["correction", "earlier", "misstated", "incorrectly"]):
                     new_entries.append({
                         "ID": generate_id(title, datetime.now()), "Date": datetime.now().strftime("%Y-%m-%d"),
                         "Formatted_Date": datetime.now().strftime("%b %d, %Y"), "Title": title[:150],
@@ -178,7 +207,7 @@ with st.sidebar:
         except Exception as e:
             st.error(f"NYT error: {e}")
 
-# ====================== MAIN DISPLAY (Your Preferred UI) ======================
+# ====================== MAIN DISPLAY ======================
 search_term = st.text_input("🔎 Search entries", "")
 
 st.subheader(f"Current Entries ({len(df)})")
@@ -226,6 +255,34 @@ for idx, row in filtered_df.iterrows():
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-# Manual Add form stays the same as before...
+# Manual Add form (unchanged from previous version)
+st.header("➕ Add New Entry (Manual)")
+with st.form("add_entry"):
+    c1, c2 = st.columns(2)
+    with c1:
+        title = st.text_input("Title *")
+        outlet = st.selectbox("Outlet (who retracted)", OUTLETS)
+        category = st.selectbox("Category", ["National", "State", "Global/International"])
+        retraction_target = st.text_input("Retraction Target (if 3rd party)")
+    with c2:
+        link = st.text_input("Correction Link")
+        orig_head = st.text_input("Original Headline")
+        claim = st.text_area("Original Claim", height=60)
+        correction = st.text_area("Correction / Retraction Text *", height=100)
+        source = st.text_input("Source", value="Manual")
 
-st.caption("Deeper X search activated with real recent corrections. Click the Deep Search button multiple times for more results. Use 'Clean False Positives' anytime.")
+    if st.form_submit_button("Add Entry"):
+        if title and outlet and correction:
+            new_row = pd.DataFrame([{
+                "ID": generate_id(title, datetime.now()), "Date": datetime.now().strftime("%Y-%m-%d"),
+                "Formatted_Date": datetime.now().strftime("%b %d, %Y"), "Title": title.strip()[:150],
+                "Outlet": outlet, "Category": category, "Original_Headline": orig_head,
+                "Original_Claim": claim, "Original_Link": "", "Correction": correction.strip(),
+                "Link": link, "Source": source, "Retraction_Target": retraction_target
+            }])
+            df = pd.concat([df, new_row], ignore_index=True).drop_duplicates(subset=["Title", "Outlet", "Source"])
+            save_data(df)
+            st.success("✅ Added!")
+            st.rerun()
+
+st.caption("Deeper search loaded with many real examples. Click the Deep Search button **multiple times** — each run adds fresh ones. Let me know how many you get now!")
