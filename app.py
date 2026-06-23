@@ -99,25 +99,14 @@ with st.sidebar:
                  "Original_Headline": "Florida’s 20th District is a majority-Black district", "Original_Claim": "",
                  "Correction": "Correction: An earlier post misstated the racial breakdown. It is a majority-minority district, not a majority-Black district. We deleted the earlier post.",
                  "Link": "https://x.com/nytimes/status/2058581220473352276", "Source": "X @nytimes", "Retraction_Target": ""},
-                {"Date": "2026-04-13", "Formatted_Date": "Apr 13, 2026", "Title": "Pope Name Error", "Outlet": "Washington Post", "Category": "Global/International",
-                 "Original_Headline": "Wrong Pope named", "Original_Claim": "",
-                 "Correction": "Correction: A previous version incorrectly named Pope Francis instead of Pope Leo. Post removed.",
-                 "Link": "https://x.com/washingtonpost/status/2043717984892416053", "Source": "X @washingtonpost", "Retraction_Target": ""},
-                {"Date": "2026-05-23", "Formatted_Date": "May 23, 2026", "Title": "Number Error (400k instead of 40k)", "Outlet": "CBS News", "Category": "National",
-                 "Original_Headline": "Previous version", "Original_Claim": "",
-                 "Correction": "Editor’s Note: A previous version mistakenly said 400,000 instead of 40,000. It has been deleted.",
-                 "Link": "https://x.com/CBSNews/status/2058229326479282230", "Source": "X @CBSNews", "Retraction_Target": ""},
-                {"Date": "2026-05-05", "Formatted_Date": "May 05, 2026", "Title": "ICE Detention Policy Correction", "Outlet": "Politico", "Category": "National",
-                 "Original_Headline": "Incorrect statement on appeals court", "Original_Claim": "",
-                 "Correction": "For the record: This corrects a deleted post that incorrectly stated the appeals court rejected ICE’s mandatory detention policy.",
-                 "Link": "https://x.com/politico/status/2051776840570724734", "Source": "X @politico", "Retraction_Target": ""},
+                # Add more as needed
             ]
             new_df = pd.DataFrame(samples)
             for col in ["Title", "Correction", "Original_Headline", "Original_Claim"]:
                 new_df[col] = new_df[col].apply(clean_text)
             df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Outlet", "Source"])
             save_data(df)
-            st.success(f"✅ Added {len(samples)} X corrections!")
+            st.success("✅ Added X corrections!")
             st.rerun()
 
     if st.button("🌐 Scrape CAMERA.org Corrections (Best Source)", use_container_width=True):
@@ -166,19 +155,20 @@ with st.sidebar:
                 url = "https://www.whitehouse.gov/mediabias/"
                 soup = BeautifulSoup(requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10).text, 'lxml')
                 new_entries = []
-                for claim in soup.find_all(['h2', 'h3'])[:12]:
-                    title = claim.get_text(strip=True)[:200]
-                    if title and any(k in title.lower() for k in ["correction", "retraction", "corrects", "deleted", "apolog"]):
+                # Improved parser for current page structure
+                for claim in soup.find_all(['h2', 'h3', 'p']):
+                    text = claim.get_text(strip=True)
+                    if len(text) > 20 and any(k in text.lower() for k in ["correction", "retraction", "corrects", "deleted", "apolog", "misstated"]):
                         new_entries.append({
-                            "ID": generate_id(title, datetime.now()), 
+                            "ID": generate_id(text, datetime.now()), 
                             "Date": datetime.now().strftime("%Y-%m-%d"),
                             "Formatted_Date": datetime.now().strftime("%b %d, %Y"), 
-                            "Title": title,
+                            "Title": text[:180],
                             "Outlet": "Various (White House flagged)",
                             "Category": "National", 
                             "Original_Headline": "See White House report",
                             "Original_Claim": "",
-                            "Correction": f"White House noted: {title}",
+                            "Correction": f"White House noted: {text[:300]}...",
                             "Link": url,
                             "Source": "WhiteHouse.gov Media Claims",
                             "Retraction_Target": "Various"
@@ -187,8 +177,10 @@ with st.sidebar:
                     new_df = pd.DataFrame(new_entries)
                     df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["Title", "Source"])
                     save_data(df)
-                    st.success(f"✅ Added {len(new_entries)} White House-flagged items.")
+                    st.success(f"✅ Added {len(new_entries)} White House-flagged items (use with caution - partisan).")
                     st.rerun()
+                else:
+                    st.info("No clear correction language found this run.")
             except Exception as e:
                 st.error(f"White House error: {e}")
 
@@ -278,4 +270,4 @@ with st.form("add_entry"):
             st.success("✅ Added!")
             st.rerun()
 
-st.caption("All buttons working • CAMERA.org is your main powerhouse • White House is test-only")
+st.caption("White House scraper improved • CAMERA.org remains strongest • Click buttons to test")
