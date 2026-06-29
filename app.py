@@ -17,12 +17,19 @@ def generate_id(title, date):
 def clean_text(text):
     if not isinstance(text, str):
         return str(text) if text is not None else ""
+    
+    # Improved word separation
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    text = re.sub(r'(\d{4})([A-Z])', r'\1 \2', text)
+    text = re.sub(r'(\w)(No Corrections|Corrections:)', r'\1 \2', text)
+    text = re.sub(r'(Corrections)([A-Z])', r'\1 \2', text)
+    text = re.sub(r'(Advertisement|Today\'s Paper|SKIP ADVERTISEMENT)', ' ', text)
+    
     junk = [r"Skip to content", r"Skip to site index", r"Today's Paper", r"Supported by", r"SKIP ADVERTISEMENT",
             r"SearchSearch", r"Select a month", r"Select a year", r"Range From", r"200[0-9]", r"20[0-9]{2}"]
     for j in junk:
         text = re.sub(j, "", text, flags=re.IGNORECASE)
-    text = re.sub(r"(Corrections:\s*[^,]+,\s*\d{4})\s*\1", r"\1", text)
-    text = re.sub(r"(\d{4})(Corrections|No Corrections)", r"\1 \2", text)
+    
     text = re.sub(r"\s+", " ", text).strip()
     return text.strip()
 
@@ -83,7 +90,7 @@ with st.sidebar:
     if st.button("🔍 Deep Search X for Corrections (80+ Examples)", use_container_width=True):
         with st.spinner("Adding 80+ realistic political corrections from X..."):
             samples = []
-            outlets = ["NYT", "WaPo", "CNN", "Politico", "Reuters", "FOX", "ABC", "CBS", "The Hill", "Breitbart"]
+            outlets = ["New York Times", "Washington Post", "CNN", "Politico", "Reuters", "FOX News", "ABC News", "CBS News", "The Hill", "Breitbart"]
             phrases = [
                 "We deleted an earlier post that misstated key facts",
                 "Correction: An earlier version misstated the details",
@@ -100,7 +107,7 @@ with st.sidebar:
                     "Date": f"2026-06-{10 + (i%20):02d}",
                     "Formatted_Date": f"Jun {10 + (i%20):02d}, 2026",
                     "Title": f"{outlet} Political Correction {i+1}",
-                    "Outlet": outlet if outlet != "NYT" else "New York Times",
+                    "Outlet": outlet,
                     "Category": "National",
                     "Original_Headline": "",
                     "Original_Claim": "",
@@ -221,7 +228,7 @@ with st.sidebar:
         st.success("🧼 Cleaned!")
         st.rerun()
 
-# Main display and manual add form (keep your existing code here)
+# ====================== MAIN DISPLAY ======================
 search_term = st.text_input("🔎 Search entries", "")
 
 st.subheader(f"Current Entries ({len(df)})")
@@ -299,4 +306,4 @@ with st.form("add_entry"):
             st.success("✅ Added!")
             st.rerun()
 
-st.caption("✅ X now generates 80+ entries dynamically • Restart and test")
+st.caption("✅ Full code with 80+ X entries • Text cleaning improved")
